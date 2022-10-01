@@ -198,3 +198,32 @@ public:
 private:
 	std::array<int, 4> opcode;
 };
+
+class greedy2step_slider : public random_agent {
+public:
+	greedy2step_slider(const std::string& args = "") : random_agent("name=slide role=slider " + args),
+		opcode({ 0, 1, 2, 3 }) {}
+
+	virtual action take_action(const board& before) {
+		int bestOp = -1;
+		board::reward bestReward = -1;
+		for (int op : opcode) {
+			auto firstBoard = board(before);
+			board::reward reward1 = firstBoard.slide(op);
+			board::reward bestReward2 = -1;
+			for (int op : opcode) {
+				board::reward reward2 = board(firstBoard).slide(op);
+				if(reward2 > bestReward2) bestReward2 = reward2;
+			}
+			if(reward1 + bestReward2 > bestReward){
+				bestReward = reward1 + bestReward2;
+				bestOp = op;
+			}
+		}
+		if (bestReward != -1) return action::slide(bestOp);
+		else return action();
+	}
+
+private:
+	std::array<int, 4> opcode;
+};
