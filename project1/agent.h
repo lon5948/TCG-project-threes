@@ -248,10 +248,7 @@ public:
 					board::reward reward3 = board(secondBoard).slide(op);
 					if(reward3 > bestReward3) bestReward3 = reward3;
 				}
-				if ( reward2 + bestReward3 > bestReward2 ) {
-					bestReward2 = reward2 + bestReward3;
-					bestOp = op;
-				}
+				if ( reward2 + bestReward3 > bestReward2 ) bestReward2 = reward2 + bestReward3;
 			}
 			if ( reward1 + bestReward2 > bestReward ) {
 				bestReward = reward1 + bestReward2;
