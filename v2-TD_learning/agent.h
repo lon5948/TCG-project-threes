@@ -282,12 +282,7 @@ private:
 class tdLearning_slider: public weight_agent {
 public:
 	tdLearning_slider(const std::string& args = "") : weight_agent("name=slide role=slider " + args),
-	opcode({ 0, 1, 2, 3 }){
-		// create 8 tuples in the net
-		for (int i = 0; i < featureNum; i++) {
-			net.emplace_back(weight(tilesNum));
-		}
-	}
+	opcode({ 0, 1, 2, 3 }){}
 
 	virtual void open_episode(const std::string& flag = "") {
         firstFlag = false;
@@ -355,7 +350,7 @@ public:
 	}
 
 	void train(int reward) {
-		alpha = 0.1/32;
+		double alpha = 0.1/32;
 		double vupdate = alpha * (CalculateBoardValue(next) - CalculateBoardValue(prev) + reward);
 		for (int ind = 0; ind < featureNum; ind++) {
 			for (int r = 0; r < 4; r++) {
