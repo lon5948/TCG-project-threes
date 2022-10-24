@@ -21,26 +21,18 @@
 #include "weight.h"
 
 
-static const int featureSize = 4;
-static const int featureNum = 8;
-static const long long tilesNum = pow(2,15);
+static const int featureSize = 6;
+static const int featureNum = 4;
+static const long long tilesNum = pow(15,7);
 
 const std::array<std::array<int, featureSize> ,featureNum> feature = {{
-	{{0,1,2,3}},
+	{{0,1,2,3,4,5}},
 
-	{{4,5,6,7}},
+	{{4,5,6,7,8,9}},
 		
-	{{8,9,10,11}},
+	{{5,6,7,9,10,11}},
 
-	{{12,13,14,15}},
-
-	{{0,4,8,12}},
-
-	{{1,5,9,13}},
-
-	{{2,6,10,14}},
-
-	{{3,7,11,15}},
+	{{9,10,11,13,14,15}}
 }};
 
 class agent {
@@ -297,50 +289,51 @@ public:
 		}
 	}
 
+	virtual void open_episode(const std::string& flag = "") {
+        firstFlag = false;
+    }
+
 	virtual action take_action(const board& before) {
 		//Feature = feature;
 		auto b = board(before);
-		int bestop = SelectBestOp(before);
+		int bestop = SelectBestOp(b);
 		int bestReward = b.slide(bestop);
 
 		if (bestop != -1) {
-			switch (round) {
-				case 0:
-					prev = b;
-					round++;
-					break;
-				case 1:
-					next = b;
-					train(prev,next,bestReward);
-					round++;
-					break;
-				default:
-					prev = next;
-					next = b;
-					train(prev,next,bestReward);
-					break;
-			}
+			next = b;
+			if (firstFlag) train(bestReward);
+			prev = next;
+			firstFlag = true;
 			return action::slide(bestop);
 		}
 		return action();
 	}
 
-	int CalculateFeatureValue(const board& b, int featureIndex) {
-		long long tileIndex = 0;
-		for (int i = 0; i < featureSize; i++) {
+	unsigned int CalculateFeatureValue(const board& b, int featureIndex) {
+		unsigned long long int value = 0;
+		for(int i = 0; i < featureSize; i++){
+			value *= 15;
 			int row = feature[featureIndex][i] / 4;
 			int column = feature[featureIndex][i] % 4;
-			tileIndex += board::ttov(b[row][column]);
+			value +=  b[row][column];
 		}
-		return tileIndex;
+		return value;
 	}
 
 	float CalculateBoardValue(const board& before) {
 		float value = 0;
 		auto b = board(before);
 		for (int ind = 0; ind < featureNum; ind++) {
-			int featureValue = CalculateFeatureValue(b, ind);
-			value += net[ind][featureValue];
+			for (int r = 0; r < 4; r++) {
+				b.rotate(1);
+				value += net[ind][CalculateFeatureValue(b, ind)];
+			}
+			b.rotate(2);
+			for (int r = 0; r < 4; r++) {
+				b.rotate(1);
+				value += net[ind][CalculateFeatureValue(b, ind)];
+			}
+			b.rotate(2);
 		}
 		return value;
 	}
@@ -353,7 +346,7 @@ public:
 			auto after = board(before);
 			board::reward reward = after.slide(op);
 			float boardValue = CalculateBoardValue(after);
-			if (reward + boardValue > maxValue) {
+			if (reward != -1 && reward + boardValue > maxValue) {
 				bestop = op;
 				maxValue = reward + boardValue;
 			}
@@ -361,20 +354,25 @@ public:
 		return bestop;
 	}
 
-	void train(const board& prev, const board& next, int reward) {
-		float learningRate = 0.1/32;
-		float delta = CalculateBoardValue(next) - CalculateBoardValue(prev) + reward ;
-		tdError += delta*learningRate;	
-
+	void train(int reward) {
+		alpha = 0.1/32;
+		double vupdate = alpha * (CalculateBoardValue(next) - CalculateBoardValue(prev) + reward);
 		for (int ind = 0; ind < featureNum; ind++) {
-			int featureValue = CalculateFeatureValue(prev, ind);
-			net[ind][featureValue] += tdError;
+			for (int r = 0; r < 4; r++) {
+				prev.rotate(1);
+				net[ind][CalculateFeatureValue(prev, ind)] += vupdate;
+			}
+			prev.rotate(2);
+			for (int r = 0; r < 4; r++) {
+				prev.rotate(1);
+				net[ind][CalculateFeatureValue(prev, ind)] += vupdate;
+			}
+			prev.rotate(2);
 		}
 	}
 
 private:
 	std::array<int, 4> opcode;
-	int round = 0;
+	bool firstFlag = false;
 	board prev, next;
-	float tdError = 0;
 };
