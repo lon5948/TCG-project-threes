@@ -103,11 +103,16 @@ public:
 
 protected:
 	virtual void init_weights(const std::string& info) {
+		/*
 		std::string res = info; // comma-separated sizes, e.g., "65536,65536"
 		for (char& ch : res)
 			if (!std::isdigit(ch)) ch = ' ';
 		std::stringstream in(res);
 		for (size_t size; in >> size; net.emplace_back(size));
+		*/
+		for (int i = 0; i < featureNum; i++) {
+			net.emplace_back(weight(tilesNum));
+		}
 	}
 	virtual void load_weights(const std::string& path) {
 		std::ifstream in(path, std::ios::in | std::ios::binary);
@@ -282,14 +287,17 @@ private:
 class tdLearning_slider: public weight_agent {
 public:
 	tdLearning_slider(const std::string& args = "") : weight_agent("name=slide role=slider " + args),
-	opcode({ 0, 1, 2, 3 }){}
+	opcode({ 0, 1, 2, 3 }){
+		for (int i = 0; i < featureNum; i++) {
+			net.emplace_back(weight(tilesNum));
+		}
+	}
 
 	virtual void open_episode(const std::string& flag = "") {
         firstFlag = false;
     }
 
 	virtual action take_action(const board& before) {
-		//Feature = feature;
 		auto b = board(before);
 		int bestop = SelectBestOp(b);
 		int bestReward = b.slide(bestop);
@@ -320,22 +328,22 @@ public:
 		auto b = board(before);
 		for (int ind = 0; ind < featureNum; ind++) {
 			for (int r = 0; r < 4; r++) {
-				b.rotate(1);
+				b.rotate_clockwise();
 				value += net[ind][CalculateFeatureValue(b, ind)];
 			}
-			b.rotate(2);
+			b.reflect_horizontal();
 			for (int r = 0; r < 4; r++) {
-				b.rotate(1);
+				b.rotate_clockwise();
 				value += net[ind][CalculateFeatureValue(b, ind)];
 			}
-			b.rotate(2);
+			b.reflect_horizontal();
 		}
 		return value;
 	}
 
 	int SelectBestOp(const board& before) {
 		int bestop = -1;
-		float maxValue = -std::numeric_limits<float>::infinity();
+		float maxValue = -10000000;
 		
 		for (int op : opcode) {
 			auto after = board(before);
@@ -352,17 +360,16 @@ public:
 	void train(int reward) {
 		double alpha = 0.1/32;
 		double vupdate = alpha * (CalculateBoardValue(next) - CalculateBoardValue(prev) + reward);
-		for (int ind = 0; ind < featureNum; ind++) {
+		if (reward != -1) {
 			for (int r = 0; r < 4; r++) {
-				prev.rotate(1);
-				net[ind][CalculateFeatureValue(prev, ind)] += vupdate;
-			}
-			prev.rotate(2);
-			for (int r = 0; r < 4; r++) {
-				prev.rotate(1);
-				net[ind][CalculateFeatureValue(prev, ind)] += vupdate;
-			}
-			prev.rotate(2);
+				prev.rotate_clockwise();
+				for (int h = 0; h < 2; h++) {
+					prev.reflect_horizontal();
+					for (int ind = 0; ind < featureNum; ind++) {
+						net[ind][CalculateFeatureValue(prev, ind)] += vupdate;
+					}	
+				}
+			}	
 		}
 	}
 
