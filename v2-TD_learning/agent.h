@@ -325,21 +325,22 @@ public:
 		return action();
 	}
 
-	int FindTileIndex(const board& b, int featureIndex) {
+	int CalculateFeatureValue(const board& b, int featureIndex) {
 		long long tileIndex = 0;
 		for (int i = 0; i < featureSize; i++) {
 			int row = feature[featureIndex][i] / 4;
 			int column = feature[featureIndex][i] % 4;
-			tileIndex += b[row][column];
+			tileIndex += board::ttov(b[row][column]);
 		}
+		return tileIndex;
 	}
 
 	float CalculateBoardValue(const board& before) {
 		float value = 0;
 		auto b = board(before);
 		for (int ind = 0; ind < featureNum; ind++) {
-			int tileIndex = FindTileIndex(b, ind);
-			value += net[ind][tileIndex];
+			int featureValue = CalculateFeatureValue(b, ind);
+			value += net[ind][featureValue];
 		}
 		return value;
 	}
@@ -364,17 +365,15 @@ public:
 		float learningRate = 0.1/32;
 		float delta = CalculateBoardValue(next) - CalculateBoardValue(prev) + reward ;
 		tdError += delta*learningRate;	
-		double v_s = (reward==-1) ? 0 : learningRate * delta;
 
 		for (int ind = 0; ind < featureNum; ind++) {
-			int tileIndex = FindTileIndex(prev, ind);
-			net[ind][tileIndex] += tdError;
+			int featureValue = CalculateFeatureValue(prev, ind);
+			net[ind][featureValue] += tdError;
 		}
 	}
 
 private:
 	std::array<int, 4> opcode;
-	//std::array<std::array<int, featureSize>, featureNum> Feature;
 	int round = 0;
 	board prev, next;
 	float tdError = 0;
