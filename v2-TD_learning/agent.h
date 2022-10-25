@@ -88,15 +88,13 @@ protected:
  */
 class weight_agent : public agent {
 public:
-	weight_agent(const std::string& args = "") : agent(args), alpha(0) {
+	weight_agent(const std::string& args = "") : agent(args), alpha(0.1/32) {
 		if (meta.find("init") != meta.end())
 			init_weights(meta["init"]);
 		if (meta.find("load") != meta.end())
 			load_weights(meta["load"]);
 		if (meta.find("alpha") != meta.end())
 			alpha = float(meta["alpha"]);
-		else
-			alpha = 0.1/32;
 	}
 	virtual ~weight_agent() {
 		if (meta.find("save") != meta.end())
@@ -285,6 +283,9 @@ class tdLearning_slider: public weight_agent {
 public:
 	tdLearning_slider(const std::string& args = "") : weight_agent("name=slide role=slider " + args),
 	opcode({ 0, 1, 2, 3 }){
+		for (int i = 0; i < featureNum; i++) {
+			net.emplace_back(tilesNum);
+		}
 	}
 
 	virtual void open_episode(const std::string& flag = "") {
@@ -293,12 +294,13 @@ public:
 
 	virtual action take_action(const board& before) {
 		auto b = board(before);
+		if (!firstFlag) prev = before;
 		int bestop = SelectBestOp(b);
 		int bestReward = b.slide(bestop);
 
 		if (bestop != -1) {
 			next = b;
-			if (firstFlag) train(bestReward);
+			train(bestReward);
 			prev = next;
 			firstFlag = true;
 			return action::slide(bestop);
@@ -306,7 +308,7 @@ public:
 		return action();
 	}
 
-	unsigned long long CalculateFeatureValue(const board& before, int featureIndex) {
+	unsigned long long int CalculateFeatureIndex(const board& before, int featureIndex) {
 		unsigned long long int value = 0;
 		auto b = board(before);
 		for(int i = 0; i < featureSize; i++){
@@ -326,7 +328,7 @@ public:
 			for (int h = 0; h < 2; h++) {
 				b.reflect_horizontal();
 				for (int ind = 0; ind < featureNum; ind++) {
-					value += net[ind][CalculateFeatureValue(b, ind)];
+					value += net[ind][CalculateFeatureIndex(b, ind)];
 				}	
 			}
 		}	
@@ -336,14 +338,15 @@ public:
 	int SelectBestOp(const board& before) {
 		int bestop = -1;
 		float maxValue = -10000000;
-		
 		for (int op : opcode) {
 			auto after = board(before);
 			board::reward reward = after.slide(op);
 			float boardValue = CalculateBoardValue(after);
-			if (reward != -1 && reward + boardValue > maxValue) {
-				bestop = op;
-				maxValue = reward + boardValue;
+			if (reward != -1) {
+				if (reward + boardValue > maxValue) {
+					bestop = op;
+					maxValue = reward + boardValue;
+				}
 			}
 		}
 		return bestop;
@@ -357,7 +360,7 @@ public:
 				for (int h = 0; h < 2; h++) {
 					prev.reflect_horizontal();
 					for (int ind = 0; ind < featureNum; ind++) {
-						net[ind][CalculateFeatureValue(prev, ind)] += vupdate;
+						net[ind][CalculateFeatureIndex(prev, ind)] += vupdate;
 					}	
 				}
 			}	

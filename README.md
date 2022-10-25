@@ -45,7 +45,7 @@ To load and review the statistics result from a file:
 To initialize the network, train the network for 100000 games, and save the weights to a file:
 ```bash
 weights_size="65536,65536,65536,65536,65536,65536,65536,65536" # 8x4-tuple
-./threes --total=100000 --block=1000 --limit=1000 --slide="init=$weights_size save=weights.bin" # need to inherit from weight_agent
+./threes --total=100000 --./runblock=1000 --limit=1000 --slide="init=$weights_size save=weights.bin" # need to inherit from weight_agent
 ```
 
 To load the weights from a file, train the network for 100000 games, and save the weights:
