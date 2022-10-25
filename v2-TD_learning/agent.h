@@ -282,11 +282,7 @@ private:
 class tdLearning_slider: public weight_agent {
 public:
 	tdLearning_slider(const std::string& args = "") : weight_agent("name=slide role=slider " + args),
-	opcode({ 0, 1, 2, 3 }){
-		for (int i = 0; i < featureNum; i++) {
-			net.emplace_back(tilesNum);
-		}
-	}
+	opcode({ 0, 1, 2, 3 }){}
 
 	virtual void open_episode(const std::string& flag = "") {
         firstFlag = false;
@@ -298,14 +294,17 @@ public:
 		int bestop = SelectBestOp(b);
 		int bestReward = b.slide(bestop);
 
-		if (bestop != -1) {
+		if (bestReward != -1) {
 			next = b;
 			train(bestReward);
 			prev = next;
 			firstFlag = true;
 			return action::slide(bestop);
 		}
-		return action();
+		else {
+			train(bestReward);
+			return action();
+		}
 	}
 
 	unsigned long long int CalculateFeatureIndex(const board& before, int featureIndex) {
@@ -353,18 +352,22 @@ public:
 	}
 
 	void train(int reward) {
-		double vupdate = alpha * (CalculateBoardValue(next) - CalculateBoardValue(prev) + reward);
-		if (reward != -1) {
-			for (int r = 0; r < 4; r++) {
-				prev.rotate_clockwise();
-				for (int h = 0; h < 2; h++) {
-					prev.reflect_horizontal();
-					for (int ind = 0; ind < featureNum; ind++) {
-						net[ind][CalculateFeatureIndex(prev, ind)] += vupdate;
-					}	
-				}
-			}	
+		double vupdate;
+		if (reward == -1) {
+			vupdate = alpha * (-CalculateBoardValue(prev));
 		}
+		else {
+			vupdate = alpha * (CalculateBoardValue(next) - CalculateBoardValue(prev) + reward);
+		}
+		for (int r = 0; r < 4; r++) {
+			prev.rotate_clockwise();
+			for (int h = 0; h < 2; h++) {
+				prev.reflect_horizontal();
+				for (int ind = 0; ind < featureNum; ind++) {
+					net[ind][CalculateFeatureIndex(prev, ind)] += vupdate;
+				}	
+			}
+		}	
 	}
 
 private:
