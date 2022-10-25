@@ -95,6 +95,8 @@ public:
 			load_weights(meta["load"]);
 		if (meta.find("alpha") != meta.end())
 			alpha = float(meta["alpha"]);
+		else
+			alpha = 0.1/32;
 	}
 	virtual ~weight_agent() {
 		if (meta.find("save") != meta.end())
@@ -103,16 +105,11 @@ public:
 
 protected:
 	virtual void init_weights(const std::string& info) {
-		/*
 		std::string res = info; // comma-separated sizes, e.g., "65536,65536"
 		for (char& ch : res)
 			if (!std::isdigit(ch)) ch = ' ';
 		std::stringstream in(res);
 		for (size_t size; in >> size; net.emplace_back(size));
-		*/
-		for (int i = 0; i < featureNum; i++) {
-			net.emplace_back(weight(tilesNum));
-		}
 	}
 	virtual void load_weights(const std::string& path) {
 		std::ifstream in(path, std::ios::in | std::ios::binary);
@@ -288,9 +285,6 @@ class tdLearning_slider: public weight_agent {
 public:
 	tdLearning_slider(const std::string& args = "") : weight_agent("name=slide role=slider " + args),
 	opcode({ 0, 1, 2, 3 }){
-		for (int i = 0; i < featureNum; i++) {
-			net.emplace_back(weight(tilesNum));
-		}
 	}
 
 	virtual void open_episode(const std::string& flag = "") {
@@ -312,8 +306,9 @@ public:
 		return action();
 	}
 
-	unsigned int CalculateFeatureValue(const board& b, int featureIndex) {
+	unsigned long long CalculateFeatureValue(const board& before, int featureIndex) {
 		unsigned long long int value = 0;
+		auto b = board(before);
 		for(int i = 0; i < featureSize; i++){
 			value *= 15;
 			int row = feature[featureIndex][i] / 4;
@@ -323,21 +318,18 @@ public:
 		return value;
 	}
 
-	float CalculateBoardValue(const board& before) {
+	float CalculateBoardValue(const board& before) {		
 		float value = 0;
 		auto b = board(before);
-		for (int ind = 0; ind < featureNum; ind++) {
-			for (int r = 0; r < 4; r++) {
-				b.rotate_clockwise();
-				value += net[ind][CalculateFeatureValue(b, ind)];
+		for (int r = 0; r < 4; r++) {
+			b.rotate_clockwise();
+			for (int h = 0; h < 2; h++) {
+				b.reflect_horizontal();
+				for (int ind = 0; ind < featureNum; ind++) {
+					value += net[ind][CalculateFeatureValue(b, ind)];
+				}	
 			}
-			b.reflect_horizontal();
-			for (int r = 0; r < 4; r++) {
-				b.rotate_clockwise();
-				value += net[ind][CalculateFeatureValue(b, ind)];
-			}
-			b.reflect_horizontal();
-		}
+		}	
 		return value;
 	}
 
@@ -358,7 +350,6 @@ public:
 	}
 
 	void train(int reward) {
-		double alpha = 0.1/32;
 		double vupdate = alpha * (CalculateBoardValue(next) - CalculateBoardValue(prev) + reward);
 		if (reward != -1) {
 			for (int r = 0; r < 4; r++) {
