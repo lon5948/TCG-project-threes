@@ -22,8 +22,8 @@
 
 
 static const int featureSize = 6;
-static const int featureNum = 4;
-static const long long tilesNum = pow(15,7);
+static const int featureSize2 = 4;
+static const int featureNum = 6;
 
 const std::array<std::array<int, featureSize> ,featureNum> feature = {{
 	{{0,1,2,3,4,5}},
@@ -32,7 +32,11 @@ const std::array<std::array<int, featureSize> ,featureNum> feature = {{
 		
 	{{5,6,7,9,10,11}},
 
-	{{9,10,11,13,14,15}}
+	{{9,10,11,13,14,15}},
+	
+	{{0,1,2,4}},
+
+	{{2,5,6,9}}
 }};
 
 class agent {
@@ -88,7 +92,7 @@ protected:
  */
 class weight_agent : public agent {
 public:
-	weight_agent(const std::string& args = "") : agent(args), alpha(0.1/32) {
+	weight_agent(const std::string& args = "") : agent(args), alpha(0.1/48) {
 		if (meta.find("init") != meta.end())
 			init_weights(meta["init"]);
 		if (meta.find("load") != meta.end())
@@ -310,7 +314,15 @@ public:
 	unsigned long long int CalculateFeatureIndex(const board& before, int featureIndex) {
 		unsigned long long int value = 0;
 		auto b = board(before);
-		for(int i = 0; i < featureSize; i++){
+		int size;
+		if (featureIndex > 3) {
+			size = featureSize2;
+		}
+		else {
+			size = featureSize;
+		} 
+
+		for(int i = 0; i < size; i++){
 			value *= 15;
 			int row = feature[featureIndex][i] / 4;
 			int column = feature[featureIndex][i] % 4;
