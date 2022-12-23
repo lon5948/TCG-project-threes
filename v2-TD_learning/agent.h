@@ -12,6 +12,7 @@
 #include <random>
 #include <sstream>
 #include <map>
+#include <vector>
 #include <limits>
 #include <type_traits>
 #include <algorithm>
@@ -315,15 +316,11 @@ public:
 		unsigned long long int value = 0;
 		auto b = board(before);
 		int size;
-		if (featureIndex > 3) {
-			size = featureSize2;
-		}
-		else {
-			size = featureSize;
-		} 
+		if (featureIndex > 3) size = featureSize2;
+		else size = featureSize;
 
 		for(int i = 0; i < size; i++){
-			value *= 15;
+			value *= 20;
 			int row = feature[featureIndex][i] / 4;
 			int column = feature[featureIndex][i] % 4;
 			value +=  b[row][column];
@@ -332,7 +329,7 @@ public:
 	}
 
 	float CalculateBoardValue(const board& before) {		
-		float value = 0;
+		float value = 0.0;
 		auto b = board(before);
 		for (int r = 0; r < 4; r++) {
 			b.rotate_clockwise();
@@ -348,19 +345,48 @@ public:
 
 	int SelectBestOp(const board& before) {
 		int bestop = -1;
-		float maxValue = -10000000;
+		float maxValue = -1e15;
 		for (int op : opcode) {
 			auto after = board(before);
 			board::reward reward = after.slide(op);
 			float boardValue = CalculateBoardValue(after);
+			float expectValue = Expectimax(after, op);
 			if (reward != -1) {
-				if (reward + boardValue > maxValue) {
+				if (reward + boardValue + expectValue > maxValue) {
 					bestop = op;
-					maxValue = reward + boardValue;
+					maxValue = reward + boardValue + expectValue;
 				}
-			}
+			}	
 		}
 		return bestop;
+	}
+
+	float Expectimax(const board& after, int op) {
+		float result = 0.0;
+		int count = 0;
+		std::vector<int> pos = {0, 0, 0, 0};
+		// up, right, down, left
+		if (op == 0) pos = {12, 13, 14, 15};
+		else if (op == 1) pos = {0, 4, 8, 12};
+		else if (op == 2) pos = {0, 1, 2, 3};
+		else if (op == 3) pos = {3, 7, 11, 15};
+
+		for(int ind = 0; ind < 4; ind++){
+			if (after(pos[ind]) != 0) continue;
+			count++;
+			auto b = board(after);
+			b.place(pos[ind], b.hint(), b.hint()); 
+			float val_max = -1e15;
+			for(int i = 0; i < 4; i++){
+				auto temp = board(b);
+				int reward = temp.slide(i);
+				if(reward == -1) continue;
+				float v = reward + CalculateBoardValue(temp);
+				val_max = std::max(val_max, v);
+			}
+			if (val_max > -1e15) result += val_max;
+		}
+		return result/count;
 	}
 
 	void train(int reward) {
