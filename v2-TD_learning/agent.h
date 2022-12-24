@@ -135,6 +135,7 @@ protected:
 protected:
 	std::vector<weight> net;
 	float alpha;
+	std::default_random_engine engine;
 };
 
 /**
@@ -350,7 +351,7 @@ public:
 			auto after = board(before);
 			board::reward reward = after.slide(op);
 			float boardValue = CalculateBoardValue(after);
-			float expectValue = Expectimax(after, op);
+			float expectValue = Expectimax(after, op, 2);
 			if (reward != -1) {
 				if (reward + boardValue + expectValue > maxValue) {
 					bestop = op;
@@ -361,11 +362,11 @@ public:
 		return bestop;
 	}
 
-	float Expectimax(const board& after, int op) {
+	float Expectimax(const board& after, int op, int depth) {
 		float result = 0.0;
 		int count = 0;
 		std::vector<int> pos = {0, 0, 0, 0};
-		// up, right, down, left
+		// 0:up, 1:right, 2:down, 3:left
 		if (op == 0) pos = {12, 13, 14, 15};
 		else if (op == 1) pos = {0, 4, 8, 12};
 		else if (op == 2) pos = {0, 1, 2, 3};
@@ -375,14 +376,22 @@ public:
 			if (after(pos[ind]) != 0) continue;
 			count++;
 			auto b = board(after);
-			b.place(pos[ind], b.hint(), b.hint()); 
+
+			int bag[3], num = 0;
+			for (board::cell t = 1; t <= 3; t++)
+				for (size_t i = 0; i < b.bag(t); i++)
+					bag[num++] = t;
+			std::shuffle(bag, bag + num, engine);
+			board::cell hint = bag[--num];
+			b.place(pos[ind], b.hint(), hint); 
+
 			float val_max = -1e15;
 			for(int i = 0; i < 4; i++){
 				auto temp = board(b);
 				int reward = temp.slide(i);
 				if(reward == -1) continue;
-				float v = reward + CalculateBoardValue(temp);
-				val_max = std::max(val_max, v);
+				if (depth > 1) val_max = std::max(val_max, reward + Expectimax(temp,i,depth-1));
+				else val_max = std::max(val_max, reward + CalculateBoardValue(temp));
 			}
 			if (val_max > -1e15) result += val_max;
 		}
