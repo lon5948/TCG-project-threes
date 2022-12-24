@@ -390,7 +390,7 @@ public:
 				auto temp = board(b);
 				int reward = temp.slide(i);
 				if(reward == -1) continue;
-				if (depth > 1) val_max = std::max(val_max, reward + Expectimax(temp,i,depth-1));
+				if (depth > 1) val_max = std::max(val_max, reward + CalculateBoardValue(temp) + Expectimax(temp,i,depth-1));
 				else val_max = std::max(val_max, reward + CalculateBoardValue(temp));
 			}
 			if (val_max > -1e15) result += val_max;
